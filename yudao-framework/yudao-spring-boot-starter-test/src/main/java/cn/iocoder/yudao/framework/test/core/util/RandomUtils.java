@@ -2,12 +2,16 @@ package cn.iocoder.yudao.framework.test.core.util;
 
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import uk.co.jemos.podam.api.PodamFactory;
 import uk.co.jemos.podam.api.PodamFactoryImpl;
 
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -21,6 +25,8 @@ public class RandomUtils {
 
     private static final int RANDOM_STRING_LENGTH = 10;
 
+    private static final int TINYINT_MAX = 127;
+
     private static final int RANDOM_DATE_MAX = 30;
 
     private static final int RANDOM_COLLECTION_LENGTH = 5;
@@ -31,10 +37,23 @@ public class RandomUtils {
         // 字符串
         PODAM_FACTORY.getStrategy().addOrReplaceTypeManufacturer(String.class,
                 (dataProviderStrategy, attributeMetadata, map) -> randomString());
+        // Integer
+        PODAM_FACTORY.getStrategy().addOrReplaceTypeManufacturer(Integer.class, (dataProviderStrategy, attributeMetadata, map) -> {
+            // 如果是 status 的字段，返回 0 或 1
+            if ("status".equals(attributeMetadata.getAttributeName())) {
+                return RandomUtil.randomEle(CommonStatusEnum.values()).getStatus();
+            }
+            // 如果是 type、status 结尾的字段，返回 tinyint 范围
+            if (StrUtil.endWithAnyIgnoreCase(attributeMetadata.getAttributeName(),
+                    "type", "status", "category", "scope")) {
+                return RandomUtil.randomInt(0, TINYINT_MAX + 1);
+            }
+            return RandomUtil.randomInt();
+        });
         // Boolean
         PODAM_FACTORY.getStrategy().addOrReplaceTypeManufacturer(Boolean.class, (dataProviderStrategy, attributeMetadata, map) -> {
             // 如果是 deleted 的字段，返回非删除
-            if (attributeMetadata.getAttributeName().equals("deleted")) {
+            if ("deleted".equals(attributeMetadata.getAttributeName())) {
                 return false;
             }
             return RandomUtil.randomBoolean();
@@ -62,7 +81,7 @@ public class RandomUtils {
     }
 
     public static <T> Set<T> randomSet(Class<T> clazz) {
-        return Stream.iterate(0, i -> i).limit(RandomUtil.randomInt(0, RANDOM_DATE_MAX))
+        return Stream.iterate(0, i -> i).limit(RandomUtil.randomInt(1, RANDOM_COLLECTION_LENGTH))
                 .map(i -> randomPojo(clazz)).collect(Collectors.toSet());
     }
 

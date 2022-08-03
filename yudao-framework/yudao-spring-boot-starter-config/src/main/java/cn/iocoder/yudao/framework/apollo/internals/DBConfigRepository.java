@@ -135,7 +135,7 @@ public class DBConfigRepository extends AbstractConfigRepository {
 
     private Properties buildProperties(List<ConfigRespDTO> configs) {
         Properties properties = propertiesFactory.getPropertiesInstance();
-        configs.stream().filter(ConfigRespDTO::getDeleted) // 过滤掉被删除的配置
+        configs.stream().filter(config -> !config.getDeleted()) // 过滤掉被删除的配置
                 .forEach(config -> properties.put(config.getKey(), config.getValue()));
         return properties;
     }
@@ -171,7 +171,7 @@ public class DBConfigRepository extends AbstractConfigRepository {
         if (maxUpdateTime == null) { // 如果更新时间为空，说明 DB 一定有新数据
             log.info("[loadConfigIfUpdate][首次加载全量配置]");
         } else { // 判断数据库中是否有更新的配置
-            if (!configFrameworkDAO.selectExistsByUpdateTimeAfter(maxUpdateTime)) {
+            if (configFrameworkDAO.selectCountByUpdateTimeGt(maxUpdateTime) == 0) {
                 return null;
             }
             log.info("[loadConfigIfUpdate][增量加载全量配置]");

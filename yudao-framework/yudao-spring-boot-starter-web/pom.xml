@@ -11,8 +11,8 @@
     <artifactId>yudao-spring-boot-starter-web</artifactId>
     <packaging>jar</packaging>
 
-    <name>${artifactId}</name>
-    <description>用户的认证、权限的校验</description>
+    <name>${project.artifactId}</name>
+    <description>Web 框架，全局异常、API 日志等</description>
     <url>https://github.com/YunaiV/ruoyi-vue-pro</url>
 
     <dependencies>
@@ -51,6 +51,13 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-core</artifactId>
             <scope>provided</scope> <!-- 设置为 provided，主要是 GlobalExceptionHandler 使用 -->
+        </dependency>
+
+        <!-- 业务组件 -->
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-module-infra-api</artifactId> <!-- 需要使用它，进行操作日志的记录 -->
+            <version>${revision}</version>
         </dependency>
 
         <!-- 服务保障相关 -->

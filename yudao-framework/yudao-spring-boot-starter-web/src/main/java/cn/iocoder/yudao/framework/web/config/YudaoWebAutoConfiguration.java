@@ -7,12 +7,14 @@ import cn.iocoder.yudao.framework.web.core.filter.DemoFilter;
 import cn.iocoder.yudao.framework.web.core.filter.XssFilter;
 import cn.iocoder.yudao.framework.web.core.handler.GlobalExceptionHandler;
 import cn.iocoder.yudao.framework.web.core.handler.GlobalResponseBodyHandler;
+import cn.iocoder.yudao.framework.web.core.util.WebFrameworkUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.PathMatcher;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.cors.CorsConfiguration;
@@ -38,10 +40,20 @@ public class YudaoWebAutoConfiguration implements WebMvcConfigurer {
 
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
-        // 设置 API 前缀，仅仅匹配 controller 包下的
-        configurer.addPathPrefix(webProperties.getApiPrefix(), clazz ->
-                clazz.isAnnotationPresent(RestController.class)
-                && clazz.getPackage().getName().startsWith(webProperties.getControllerPackage())); // 仅仅匹配 controller 包
+        configurePathMatch(configurer, webProperties.getAdminApi());
+        configurePathMatch(configurer, webProperties.getAppApi());
+    }
+
+    /**
+     * 设置 API 前缀，仅仅匹配 controller 包下的
+     *
+     * @param configurer 配置
+     * @param api API 配置
+     */
+    private void configurePathMatch(PathMatchConfigurer configurer, WebProperties.Api api) {
+        AntPathMatcher antPathMatcher = new AntPathMatcher(".");
+        configurer.addPathPrefix(api.getPrefix(), clazz -> clazz.isAnnotationPresent(RestController.class)
+                && antPathMatcher.match(api.getController(), clazz.getPackage().getName())); // 仅仅匹配 controller 包
     }
 
     @Bean
@@ -52,6 +64,13 @@ public class YudaoWebAutoConfiguration implements WebMvcConfigurer {
     @Bean
     public GlobalResponseBodyHandler globalResponseBodyHandler() {
         return new GlobalResponseBodyHandler();
+    }
+
+    @Bean
+    @SuppressWarnings("InstantiationOfUtilityClass")
+    public WebFrameworkUtils webFrameworkUtils(WebProperties webProperties) {
+        // 由于 WebFrameworkUtils 需要使用到 webProperties 属性，所以注册为一个 Bean
+        return new WebFrameworkUtils(webProperties);
     }
 
     // ========== Filter 相关 ==========

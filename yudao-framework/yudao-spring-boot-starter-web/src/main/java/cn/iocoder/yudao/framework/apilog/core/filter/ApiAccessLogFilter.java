@@ -3,19 +3,17 @@ package cn.iocoder.yudao.framework.apilog.core.filter;
 import cn.hutool.core.exceptions.ExceptionUtil;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.extra.servlet.ServletUtil;
+import cn.iocoder.yudao.framework.apilog.core.service.ApiAccessLog;
+import cn.iocoder.yudao.framework.apilog.core.service.ApiAccessLogFrameworkService;
 import cn.iocoder.yudao.framework.common.exception.enums.GlobalErrorCodeConstants;
 import cn.iocoder.yudao.framework.common.pojo.CommonResult;
-import cn.iocoder.yudao.framework.apilog.core.service.ApiAccessLogFrameworkService;
-import cn.iocoder.yudao.framework.apilog.core.service.dto.ApiAccessLogCreateReqDTO;
-import cn.iocoder.yudao.framework.common.util.monitor.TracerUtils;
-import cn.iocoder.yudao.framework.web.config.WebProperties;
-import cn.iocoder.yudao.framework.web.core.util.WebFrameworkUtils;
 import cn.iocoder.yudao.framework.common.util.date.DateUtils;
-import cn.iocoder.yudao.framework.common.util.json.JsonUtils;
+import cn.iocoder.yudao.framework.common.util.monitor.TracerUtils;
 import cn.iocoder.yudao.framework.common.util.servlet.ServletUtils;
-import lombok.RequiredArgsConstructor;
+import cn.iocoder.yudao.framework.web.config.WebProperties;
+import cn.iocoder.yudao.framework.web.core.filter.ApiRequestFilter;
+import cn.iocoder.yudao.framework.web.core.util.WebFrameworkUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -25,24 +23,24 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.Map;
 
+import static cn.iocoder.yudao.framework.common.util.json.JsonUtils.toJsonString;
+
 /**
  * API 访问日志 Filter
  *
  * @author 芋道源码
  */
-@RequiredArgsConstructor
 @Slf4j
-public class ApiAccessLogFilter extends OncePerRequestFilter {
+public class ApiAccessLogFilter extends ApiRequestFilter {
 
-    private final WebProperties webProperties;
     private final String applicationName;
 
     private final ApiAccessLogFrameworkService apiAccessLogFrameworkService;
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        // 只过滤 API 请求的地址
-        return !request.getRequestURI().startsWith(webProperties.getApiPrefix());
+    public ApiAccessLogFilter(WebProperties webProperties, String applicationName, ApiAccessLogFrameworkService apiAccessLogFrameworkService) {
+        super(webProperties);
+        this.applicationName = applicationName;
+        this.apiAccessLogFrameworkService = apiAccessLogFrameworkService;
     }
 
     @Override
@@ -68,16 +66,16 @@ public class ApiAccessLogFilter extends OncePerRequestFilter {
 
     private void createApiAccessLog(HttpServletRequest request, Date beginTime,
                                     Map<String, String> queryString, String requestBody, Exception ex) {
-        ApiAccessLogCreateReqDTO accessLog = new ApiAccessLogCreateReqDTO();
+        ApiAccessLog accessLog = new ApiAccessLog();
         try {
             this.buildApiAccessLogDTO(accessLog, request, beginTime, queryString, requestBody, ex);
-            apiAccessLogFrameworkService.createApiAccessLogAsync(accessLog);
+            apiAccessLogFrameworkService.createApiAccessLog(accessLog);
         } catch (Throwable th) {
-            log.error("[createApiAccessLog][url({}) log({}) 发生异常]", request.getRequestURI(), JsonUtils.toJsonString(accessLog), th);
+            log.error("[createApiAccessLog][url({}) log({}) 发生异常]", request.getRequestURI(), toJsonString(accessLog), th);
         }
     }
 
-    private void buildApiAccessLogDTO(ApiAccessLogCreateReqDTO accessLog, HttpServletRequest request, Date beginTime,
+    private void buildApiAccessLogDTO(ApiAccessLog accessLog, HttpServletRequest request, Date beginTime,
                                       Map<String, String> queryString, String requestBody, Exception ex) {
         // 处理用户信息
         accessLog.setUserId(WebFrameworkUtils.getLoginUserId(request));
@@ -99,7 +97,7 @@ public class ApiAccessLogFilter extends OncePerRequestFilter {
         accessLog.setApplicationName(applicationName);
         accessLog.setRequestUrl(request.getRequestURI());
         Map<String, Object> requestParams = MapUtil.<String, Object>builder().put("query", queryString).put("body", requestBody).build();
-        accessLog.setRequestParams(JsonUtils.toJsonString(requestParams));
+        accessLog.setRequestParams(toJsonString(requestParams));
         accessLog.setRequestMethod(request.getMethod());
         accessLog.setUserAgent(ServletUtils.getUserAgent(request));
         accessLog.setUserIp(ServletUtil.getClientIP(request));
